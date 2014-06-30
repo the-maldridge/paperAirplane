@@ -54,7 +54,7 @@ class Printer():
         job = ""
         data = ""
         con.settimeout(1)
-        while("showpage" not in job):
+        while("%%EOF" not in job):
             try:
                 data = con.recv(1024)
                 job += data
