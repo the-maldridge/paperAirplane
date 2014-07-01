@@ -29,6 +29,10 @@ class Spooler():
         logging.debug("Locking job")
         job["locked"] = True
         logging.info("Spooling Job")
+        if "/Duplex true" in jobToSpool:
+            job["duplex"] = True
+        else:
+            job["duplex"] = False
         job["postScript"] = jobToSpool
         jobFile = open(self.rndSpoolFile(), 'w')
         json.dump(job, jobFile)
