@@ -1,15 +1,18 @@
 import logging
 import socket
 import json
-import random
+import hashlib
+import time
 import os
 
-class Spooler():
-    def __init__(self, spooldir):
+class MicroSpooler():
+    def __init__(self, name):
+        spooldir = name
+        self.name = name
         try:
             os.chdir(spooldir)
         except OSError as e:
-            logging.debug("Could not chdir to spooldir: %s", e)
+            logging.warning("Could not chdir to spooldir: %s", e)
             logging.warning("Couldn't open spooler directory, trying to create...")
             try:
                 os.mkdir(spooldir)
@@ -19,26 +22,27 @@ class Spooler():
                 logging.error("Could not use specified spooling directory: %s", e)
         logging.info("Spooler successfully initialized")
 
-    def rndSpoolFile(self):
-        num = random.random()
-        num *= 10000
-        return str(int(num))
+    def spoolFileName(self):
+        fname = hashlib.sha256(str(time.time())+self.name).hexdigest()
+        return fname[0:10]
 
-    def spoolJob(self, jobToSpool):
+    def spoolJob(self, jobToSpool, originPrinter):
         job = {}
-        logging.debug("Locking job")
-        job["locked"] = True
-        logging.info("Spooling Job")
-        if "/Duplex true" in jobToSpool:
-            job["duplex"] = True
-        else:
-            job["duplex"] = False
-        job["postScript"] = jobToSpool
-        jobFile = open(self.rndSpoolFile(), 'w')
-        json.dump(job, jobFile)
+        logging.debug("New job from %s", originPrinter)
+        job["origin"] = originPrinter
+
+        jobName = self.spoolFileName()
+        logging.info("Spooling Job %s", jobName)
+        try:
+            jobFile = open(jobName, 'w')
+            json.dump(job, jobFile)
+            logging.debug("Successfully spooled %s", jobName)
+        except Exception as e:
+            logging.error("Encountered error while spooling: %s", e)
 
 class Printer():
     def __init__(self, bindaddr, port, name):
+        self.name = name
         logging.info("Creating new printer %s on %s:%s", name, bindaddr, port)
         try:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -47,7 +51,7 @@ class Printer():
             logging.error("Failed to bind printer %s", name)
             logging.error(e)
         logging.info("Initializing new spooler for %s", name)
-        self.spooler = Spooler(name)
+        self.spooler = MicroSpooler(name)
 
     def listener(self):
         self.s.listen(1)
@@ -65,12 +69,10 @@ class Printer():
             except Exception as e:
                 logging.error("Encountered error %s", e)
                 break
-        logging.debug("{} wrote:".format(addr))
-        logging.debug(job)
-        self.spooler.spoolJob(job)
+        self.spooler.spoolJob(job, self.name)
 
 if __name__=="__main__":
     logging.basicConfig(level=logging.DEBUG)
-    logging.debug("Initializing prntSrv in test mode")
+    logging.debug("Initializing the MicroSpooler in test mode")
     printer = Printer(socket.gethostbyname(socket.gethostname()), 9001, "test")
     printer.listener()
