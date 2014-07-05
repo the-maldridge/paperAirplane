@@ -6,9 +6,9 @@ import time
 import os
 
 class MicroSpooler():
-    def __init__(self, name):
-        spooldir = name
-        self.name = name
+    def __init__(self, originPrinter):
+        spooldir = originPrinter
+        self.name = originPrinter
         try:
             os.chdir(spooldir)
         except OSError as e:
@@ -26,13 +26,13 @@ class MicroSpooler():
         fname = hashlib.sha256(str(time.time())+self.name).hexdigest()
         return fname[0:10]
 
-    def spoolJob(self, jobToSpool, originPrinter):
+    def spoolJob(self, jobToSpool, originUser, originPrinter):
         job = {}
-        logging.debug("New job from %s", originPrinter)
-        job["origin"] = originPrinter
-
+        logging.debug("New job from user %s on %s", originUser, originPrinter)
+        job["originPrinter"] = originPrinter
+        job["originUser"] = originUser
         jobName = self.spoolFileName()
-        logging.info("Spooling Job %s", jobName)
+        logging.info("Spooling Job %s for %s on %s", jobName, originUser, originPrinter)
         try:
             jobFile = open(jobName, 'w')
             json.dump(job, jobFile)
@@ -58,6 +58,17 @@ class Printer():
         con, addr = self.s.accept()
         self.getJob(con, addr)
 
+    def getUser(self, addr):
+        logging.info("Determining user for address %s", addr[0])
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((addr[0], 3200))
+        try:
+            originUser = sock.recv(512).strip()
+        finally:
+            sock.close()
+        logging.debug("User determined to be %s", originUser)
+        return originUser
+
     def getJob(self, con, addr):
         job = ""
         data = ""
@@ -69,10 +80,11 @@ class Printer():
             except Exception as e:
                 logging.error("Encountered error %s", e)
                 break
-        self.spooler.spoolJob(job, self.name)
+        user = self.getUser(addr)
+        self.spooler.spoolJob(job, user, self.name)
 
 if __name__=="__main__":
     logging.basicConfig(level=logging.DEBUG)
     logging.debug("Initializing the MicroSpooler in test mode")
-    printer = Printer(socket.gethostbyname(socket.gethostname()), 9001, "test")
+    printer = Printer("localhost", 9001, "test")
     printer.listener()
