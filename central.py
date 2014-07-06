@@ -2,17 +2,17 @@ import logging
 import SocketServer
 import json
 import tempfile
+import base64
 
 class IncommingJob(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request.recv(256)
         jobJSON = data
         while(len(data) != 0):
-            jobJSON += data
             data = self.request.recv(256)
-        logging.debug(jobJSON)
-        self.job = json.loads(jobJSON)
-        #logging.info("Received job %s", job["name"])
+            jobJSON += data
+        self.job = json.loads(base64.b64decode(jobJSON))
+        logging.debug("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
 
 class Spooler():
     def __init__(self, bindaddr, bindport):

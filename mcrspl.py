@@ -4,6 +4,7 @@ import json
 import hashlib
 import time
 import os
+import base64
 
 class MicroSpooler():
     def __init__(self, originPrinter):
@@ -50,11 +51,11 @@ class MicroSpooler():
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((central, 3201))
             logging.debug("Attempting to send job to central")
-            sock.sendall(json.dumps(job))
+            sock.sendall(base64.b64encode(json.dumps(job)))
             logging.debug("Waiting on acknowledgement from central")
             sock.settimeout(15)
         except Exception as e:
-            logging.error("An error was encountered while attempting to alert the central spooler: %s", e)
+            logging.exception("An error was encountered while attempting to alert the central spooler: %s", e)
         finally:
             sock.close()
             logging.debug("Transmission to central succeeded")
@@ -100,6 +101,9 @@ class Printer():
                 logging.error("Encountered error %s", e)
                 break
         user = self.getUser(addr)
+        temp = open("temp1", 'w')
+        temp.write(job)
+        temp.close()
         self.spooler.spoolJob(job, user, self.name)
 
 if __name__=="__main__":
