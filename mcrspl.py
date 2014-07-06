@@ -53,14 +53,11 @@ class MicroSpooler():
             sock.sendall(json.dumps(job))
             logging.debug("Waiting on acknowledgement from central")
             sock.settimeout(15)
-            ackmsg=""
-            while("EOF" not in ackmsg):
-                ackmsg += sock.recv(16)                
-            logging.debug("Transmission to central succeeded")
         except Exception as e:
             logging.error("An error was encountered while attempting to alert the central spooler: %s", e)
         finally:
             sock.close()
+            logging.debug("Transmission to central succeeded")
             
 class Printer():
     def __init__(self, bindaddr, port, name):

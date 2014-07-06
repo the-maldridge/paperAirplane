@@ -1,17 +1,18 @@
 import logging
 import SocketServer
 import json
+import tempfile
 
 class IncommingJob(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request.recv(256)
-        job = data
+        jobJSON = data
         while(len(data) != 0):
-            job += data
+            jobJSON += data
             data = self.request.recv(256)
-        logging.debug(job)
-        logging.debug("Replying to microSpooler at %s", self.client_address[0])
-        self.request.send("EOF")
+        logging.debug(jobJSON)
+        self.job = json.loads(jobJSON)
+        #logging.info("Received job %s", job["name"])
 
 class Spooler():
     def __init__(self, bindaddr, bindport):
