@@ -101,9 +101,6 @@ class Printer():
                 logging.error("Encountered error %s", e)
                 break
         user = self.getUser(addr)
-        temp = open("temp1", 'w')
-        temp.write(job)
-        temp.close()
         self.spooler.spoolJob(job, user, self.name)
 
 if __name__=="__main__":
