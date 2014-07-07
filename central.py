@@ -4,8 +4,8 @@ import json
 import tempfile
 import base64
 import threading
+import database
 import time
-import Queue
 
 class IncommingJob(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -16,7 +16,7 @@ class IncommingJob(SocketServer.BaseRequestHandler):
             data = self.request.recv(256)
             jobJSON += data
         self.job = json.loads(base64.b64decode(jobJSON))
-        logging.debug("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
+        logging.info("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
 
 class Spooler():
     def __init__(self, bindaddr, bindport):
@@ -27,26 +27,48 @@ class Spooler():
         except Exception as e:
             logging.exception("Could not bind: %s", e)
 
-class Billing():
+class PSParser():
     def __init__(self):
+        logging.info("Loaded PostScript Parser")
+
+    def isDuplex(self, ps, jid):
+        if("/Duplex true" in ps):
+            logging.debug("job %s is duplex enabled", jid)
+            return True
+        else:
+            logging.debug("job %s is not duplex enabled", jid)
+
+    def isColor(self, ps, jid):
+        logging.debug("Checking to see if %s is in color", jid)
+
+    def pageCount(self, ps, jid):
+        logging.debug("Computing page count for %s", jid)
+
+class Billing():
+    def __init__(self, path):
         logging.info("Initializing Billing Manager")
-        while True:
-            logging.info("pong")
-            time.sleep(1000)
+        logging.debug("Attempting to connect to database")
+        self.db = database.BillingDB(path)
+        logging.debug("Successfully connected to database!")
 
 class CentralControl():
     def __init__(self):
         logging.info("Initializing CentralControl")
-        q = Queue.Queue()
 
-        threads = []
-        threads.append(threading.Thread(target=Spooler, args=("localhost", 3201)))
-        threads.append(threading.Thread(target=Billing))
+        self.threads = []
+        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201)))
+        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite",)))
 
         logging.info("GOING POLYTHREADED")
-        for thread in threads:
-            thread.daemon = False
+        for thread in self.threads:
+            thread.daemon = True
             thread.start()
+
+        while(True):
+            if not any([thread.isAlive() for thread in self.threads]):
+                break
+            else:
+                time.sleep(1)
 
 if __name__ == "__main__":
     logging.basicConfig(level = logging.DEBUG)
