@@ -12,19 +12,16 @@ import os
 class IncommingJob(SocketServer.BaseRequestHandler):
     def setup(self, baseDir, toBill):
         self.toBill = toBill
-        SocketServer.BaseRequestHandler.__init__(self)
         try:
             logging.info("Pivoting to master spool directory")
             os.chdir(baseDir)
-            logging.debug("Successfully found master spool dir")
+            logging.debug("Successfully found master spool directory")
         except OSError:
             logging.warning("Could not use master spool directory")
             logging.warning("Attempting to create new spool directory")
             os.mkdir(baseDir)
             os.chdir(baseDir)
-            logging.info("Successfully found master spool dir")
-        finally:
-            pass
+            logging.info("Successfully found master spool directory")
 
     def handle(self):
         logging.debug("Processing new job from %s", self.client_address[0])
@@ -72,9 +69,6 @@ class PSParser():
         else:
             logging.debug("job %s is not duplex enabled", jid)
             return False
-
-    def isColor(self, ps, jid):
-        logging.debug("Checking to see if %s is in color", jid)
 
     def pageCount(self, jid):
         ps = self.__getPSFromJID(jid)
