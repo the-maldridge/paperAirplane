@@ -16,13 +16,13 @@ class IncommingJob(SocketServer.BaseRequestHandler):
         try:
             logging.info("Pivoting to master spool directory")
             os.chdir(baseDir)
-            logging.info("Successfully initialized master spooler")
+            logging.debug("Successfully found master spool dir")
         except OSError:
             logging.warning("Could not use master spool directory")
             logging.warning("Attempting to create new spool directory")
             os.mkdir(baseDir)
             os.chdir(baseDir)
-            logging.info("Successfully initialized master spooler")
+            logging.info("Successfully found master spool dir")
         finally:
             pass
 
