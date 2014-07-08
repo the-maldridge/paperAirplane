@@ -9,7 +9,6 @@ import time
 import Queue
 
 class IncommingJob(SocketServer.BaseRequestHandler):
-    self.qref = ""
 
     def handle(self):
         logging.debug("Processing new job from %s", self.client_address[0])
@@ -22,7 +21,7 @@ class IncommingJob(SocketServer.BaseRequestHandler):
         logging.info("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
 
     def sendToBilling(self, jid):
-        self.qref.put(jid)
+        pass
 
     def saveJob(self, baseDir, job):
         jid = job["name"]
@@ -32,9 +31,8 @@ class IncommingJob(SocketServer.BaseRequestHandler):
         self.sendToBilling(jid)
 
 class Spooler():
-    def __init__(self, bindaddr, bindport, spooldir, qref):
+    def __init__(self, bindaddr, bindport, spooldir):
         try:
-            IncommingJob.qref = qref
             logging.info("Initializing master spooler on %s:%s", bindaddr, bindport)
             server = SocketServer.TCPServer((bindaddr, bindport), IncommingJob)
             server.serve_forever()
@@ -77,7 +75,7 @@ class Billing():
         logging.debug("Successfully connected to database!")
         logging.debug("Attempting to create a parser")
         self.parser = PSParser()
-        logging.debug9"Successfully created parser")
+        logging.debug("Successfully created parser")
 
     def computeCost(self, jid):
         cost = self.parser.pageCount(jid)
@@ -89,12 +87,9 @@ class CentralControl():
     def __init__(self):
         logging.info("Initializing CentralControl")
 
-        self.QtoBill = Queue.Queue()
-        self.QtoPrint = Queue.Queue()
-
         self.threads = []
-        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201, self.QtoBill)))
-        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite", self.QtoBill, self.QtoPrint)))
+        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201, "coreSpool")))
+        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite",)))
 
         logging.info("GOING POLYTHREADED")
         for thread in self.threads:
