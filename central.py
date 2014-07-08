@@ -31,7 +31,7 @@ class IncommingJob(SocketServer.BaseRequestHandler):
         self.sendToBilling(jid)
 
 class Spooler():
-    def __init__(self, bindaddr, bindport, spooldir):
+    def __init__(self, bindaddr, bindport, spooldir, toBill):
         try:
             logging.info("Initializing master spooler on %s:%s", bindaddr, bindport)
             server = SocketServer.TCPServer((bindaddr, bindport), IncommingJob)
@@ -68,7 +68,7 @@ class PSParser():
         return numPages
 
 class Billing():
-    def __init__(self, path):
+    def __init__(self, path, toBill):
         logging.info("Initializing Billing Manager")
         logging.debug("Attempting to connect to database")
         self.db = database.BillingDB(path)
@@ -87,9 +87,11 @@ class CentralControl():
     def __init__(self):
         logging.info("Initializing CentralControl")
 
+        self.toBill = Queue.Queue()
+
         self.threads = []
-        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201, "coreSpool")))
-        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite",)))
+        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201, "coreSpool", self.toBill)))
+        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite", self.toBill)))
 
         logging.info("GOING POLYTHREADED")
         for thread in self.threads:
