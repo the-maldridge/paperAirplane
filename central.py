@@ -7,8 +7,24 @@ import threading
 import database
 import time
 import Queue
+import os
 
 class IncommingJob(SocketServer.BaseRequestHandler):
+    def setup(self, baseDir, toBill):
+        self.toBill = toBill
+        SocketServer.BaseRequestHandler.__init__(self)
+        try:
+            logging.info("Pivoting to master spool directory")
+            os.chdir(baseDir)
+            logging.info("Successfully initialized master spooler")
+        except OSError:
+            logging.warning("Could not use master spool directory")
+            logging.warning("Attempting to create new spool directory")
+            os.mkdir(baseDir)
+            os.chdir(baseDir)
+            logging.info("Successfully initialized master spooler")
+        finally:
+            pass
 
     def handle(self):
         logging.debug("Processing new job from %s", self.client_address[0])
@@ -25,7 +41,6 @@ class IncommingJob(SocketServer.BaseRequestHandler):
 
     def saveJob(self, baseDir, job):
         jid = job["name"]
-        os.chdir(baseDir)
         spoolFile = open(jid, 'w')
         json.dump(job, jid)
         self.sendToBilling(jid)
