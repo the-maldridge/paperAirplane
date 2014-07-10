@@ -1,5 +1,5 @@
 import logging
-import SocketServer
+import socket
 import json
 import tempfile
 import base64
@@ -9,32 +9,41 @@ import time
 import Queue
 import os
 
-class IncommingJob(SocketServer.BaseRequestHandler):
-    def setup(self, baseDir, toBill):
+class IncommingJob():
+    def __init__(self, con, addr, baseDir, toBill):
         self.toBill = toBill
-        try:
-            logging.info("Pivoting to master spool directory")
-            os.chdir(baseDir)
-            logging.debug("Successfully found master spool directory")
-        except OSError:
-            logging.warning("Could not use master spool directory")
-            logging.warning("Attempting to create new spool directory")
-            os.mkdir(baseDir)
-            os.chdir(baseDir)
-            logging.info("Successfully found master spool directory")
+        self.con = con
+        self.addr = addr
+        #need to improve this
+        logging.debug("Current path is %s", os.getcwd())
+        if(baseDir not in os.getcwd()):
+            try:
+                logging.info("Pivoting to master spool directory")
+                os.chdir(baseDir)
+                logging.debug("Successfully found master spool directory")
+            except OSError:
+                logging.warning("Could not use master spool directory")
+                logging.warning("Attempting to create new spool directory")
+                os.mkdir(baseDir)
+                os.chdir(baseDir)
+                logging.info("Successfully found master spool directory")
+        else:
+            logging.debug("Already in spooldir")
+        self.getJob()
 
-    def handle(self):
-        logging.debug("Processing new job from %s", self.client_address[0])
-        data = self.request.recv(256)
+    def getJob(self):
+        logging.debug("Processing new job from %s", self.addr[0])
+        self.con.settimeout(1)
+        data = self.con.recv(256)
         jobJSON = data
         while(len(data) != 0):
-            data = self.request.recv(256)
+            data = self.con.recv(256)
             jobJSON += data
         self.job = json.loads(base64.b64decode(jobJSON))
         logging.info("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
 
     def sendToBilling(self, jid):
-        pass
+        logging.info("made it to billing hook")
 
     def saveJob(self, baseDir, job):
         jid = job["name"]
@@ -44,12 +53,28 @@ class IncommingJob(SocketServer.BaseRequestHandler):
 
 class Spooler():
     def __init__(self, bindaddr, bindport, spooldir, toBill):
+        self.bindaddr = bindaddr
+        self.bindport = bindport
+        self.spooldir = spooldir
+        self.toBill = toBill
         try:
             logging.info("Initializing master spooler on %s:%s", bindaddr, bindport)
-            server = SocketServer.TCPServer((bindaddr, bindport), IncommingJob)
-            server.serve_forever()
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.bind((bindaddr, bindport))
         except Exception as e:
             logging.exception("Could not bind: %s", e)
+        self.run()
+
+    def listener(self):
+        self.s.listen(5)
+        con, addr = self.s.accept()
+        t = threading.Thread(target=IncommingJob, args=(con, addr, self.spooldir, self.toBill))
+        t.daemon = True
+        t.start()
+
+    def run(self):
+        while(True):
+            self.listener()
 
 class PSParser():
     def __init__(self):
