@@ -46,7 +46,8 @@ class IncommingJob():
         return job
 
     def sendToBilling(self, jid):
-        logging.info("made it to billing hook for %s", jid)
+        logging.debug("Sending %s for billing", jid)
+        self.toBill.put(jid)
 
     def saveJob(self, job):
         jid = job["name"]
@@ -107,6 +108,10 @@ class PSParser():
 
 class Billing():
     def __init__(self, path, toBill):
+        self.path = path
+        self.toBill = toBill
+        
+        #init some internal instances of stuff
         logging.info("Initializing Billing Manager")
         logging.debug("Attempting to connect to database")
         self.db = database.BillingDB(path)
@@ -114,6 +119,12 @@ class Billing():
         logging.debug("Attempting to create a parser")
         self.parser = PSParser()
         logging.debug("Successfully created parser")
+
+        #enter main loop
+        self.run()
+
+    def run(self):
+        pass
 
     def computeCost(self, jid):
         cost = self.parser.pageCount(jid)
