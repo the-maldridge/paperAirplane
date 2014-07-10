@@ -57,7 +57,8 @@ class IncommingJob():
         return jid
 
 class Spooler():
-    def __init__(self, bindaddr, bindport, spooldir, toBill):
+    def __init__(self, control, bindaddr, bindport, spooldir, toBill):
+        self.threadOps = control
         self.bindaddr = bindaddr
         self.bindport = bindport
         self.spooldir = spooldir
@@ -68,6 +69,9 @@ class Spooler():
             self.s.bind((bindaddr, bindport))
         except Exception as e:
             logging.exception("Could not bind: %s", e)
+        #clear thread lock
+        self.threadOps.get(False)
+        self.threadOps.task_done()
         self.run()
 
     def listener(self):
@@ -107,14 +111,28 @@ class PSParser():
         return numPages
 
 class Billing():
-    def __init__(self, path, toBill):
-        self.path = path
+    def __init__(self, control, spoolDir, dbpath, toBill):
+        self.threadOps = control
         self.toBill = toBill
+
+        #attempt to get to the same dir the spooler is in
+        #first hold until the spooler is running
+        logging.info("Billing: waiting for spooler to initialize")
+        self.threadOps.join()
+        if(spoolDir not in os.getcwd()):
+            try:
+                os.chdir(spoolDir)
+            except OSError as e:
+                logging.critical("Billing couldn't get to the spooler dir")
+                logging.critical("%s", e)
+                self.threadOps.put("HALT")
+        else:
+            logging.debug("Somehow already in the spooler's directory")
         
         #init some internal instances of stuff
         logging.info("Initializing Billing Manager")
         logging.debug("Attempting to connect to database")
-        self.db = database.BillingDB(path)
+        self.db = database.BillingDB(dbpath)
         logging.debug("Successfully connected to database!")
         logging.debug("Attempting to create a parser")
         self.parser = PSParser()
@@ -124,23 +142,38 @@ class Billing():
         self.run()
 
     def run(self):
-        pass
+        while(True):
+            jid = self.toBill.get(block=True)
+            cost = self.computeCost(jid)
+            user = self.getUser(jid)
+            logging.info("Billing user %s %s credit(s) for job %s", user, cost, jid)
 
     def computeCost(self, jid):
         cost = self.parser.pageCount(jid)
         if self.parser.isDuplex(jid):
-            cost = cost / 2
-        logging.info("Billing user %s %s credit(s) for job %s", job["originUser"], cost, jid)
+            cost = floor(cost / 2)
+        return cost
+
+    def getUser(self, jid):
+        f = open(jid, 'r')
+        j = json.load(f)
+        user = j["originUser"]
+        f.close()
+        return user
 
 class CentralControl():
     def __init__(self):
         logging.info("Initializing CentralControl")
 
+        self.threadControl = Queue.Queue()
         self.toBill = Queue.Queue()
 
         self.threads = []
-        self.threads.append(threading.Thread(target=Spooler, args=("localhost", 3201, "coreSpool", self.toBill)))
-        self.threads.append(threading.Thread(target=Billing, args=("test.sqlite", self.toBill)))
+        self.threads.append(threading.Thread(target=Spooler, args=(self.threadControl, "localhost", 3201, "coreSpool", self.toBill)))
+        self.threads.append(threading.Thread(target=Billing, args=(self.threadControl, "coreSpool", "test.sqlite", self.toBill)))
+
+        #set up startup locks before running:
+        self.threadControl.put("spooler")
 
         logging.info("GOING POLYTHREADED")
         for thread in self.threads:
