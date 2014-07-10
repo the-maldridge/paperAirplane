@@ -29,7 +29,9 @@ class IncommingJob():
                 logging.info("Successfully found master spool directory")
         else:
             logging.debug("Already in spooldir")
-        self.getJob()
+        jobRaw = self.getJob()
+        jid = self.saveJob(jobRaw)
+        self.sendToBilling(jid)
 
     def getJob(self):
         logging.debug("Processing new job from %s", self.addr[0])
@@ -39,17 +41,19 @@ class IncommingJob():
         while(len(data) != 0):
             data = self.con.recv(256)
             jobJSON += data
-        self.job = json.loads(base64.b64decode(jobJSON))
-        logging.info("Recieved job %s from %s on %s", self.job["name"], self.job["originUser"], self.job["originPrinter"])
+        job = json.loads(base64.b64decode(jobJSON))
+        logging.info("Recieved job %s from %s on %s", job["name"], job["originUser"], job["originPrinter"])
+        return job
 
     def sendToBilling(self, jid):
-        logging.info("made it to billing hook")
+        logging.info("made it to billing hook for %s", jid)
 
-    def saveJob(self, baseDir, job):
+    def saveJob(self, job):
         jid = job["name"]
         spoolFile = open(jid, 'w')
-        json.dump(job, jid)
-        self.sendToBilling(jid)
+        json.dump(job, spoolFile)
+        spoolFile.close()
+        return jid
 
 class Spooler():
     def __init__(self, bindaddr, bindport, spooldir, toBill):
