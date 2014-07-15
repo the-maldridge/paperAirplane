@@ -10,25 +10,11 @@ import Queue
 import os
 
 class IncommingJob():
-    def __init__(self, con, addr, baseDir, toBill):
+    def __init__(self, con, addr, toBill):
         self.toBill = toBill
         self.con = con
         self.addr = addr
-        #need to improve this
-        logging.debug("Current path is %s", os.getcwd())
-        if(baseDir not in os.getcwd()):
-            try:
-                logging.info("Pivoting to master spool directory")
-                os.chdir(baseDir)
-                logging.debug("Successfully found master spool directory")
-            except OSError:
-                logging.warning("Could not use master spool directory")
-                logging.warning("Attempting to create new spool directory")
-                os.mkdir(baseDir)
-                os.chdir(baseDir)
-                logging.info("Successfully found master spool directory")
-        else:
-            logging.debug("Already in spooldir")
+
         jobRaw = self.getJob()
         jid = self.saveJob(jobRaw)
         self.sendToBilling(jid)
@@ -63,12 +49,32 @@ class Spooler():
         self.bindport = bindport
         self.spooldir = spooldir
         self.toBill = toBill
+
+        #need to improve this
+        # currently it moves us into the spooler's main directory
+        logging.debug("Current path is %s", os.getcwd())
+        if(spooldir not in os.getcwd()):
+            try:
+                logging.info("Pivoting to master spool directory")
+                os.chdir(spooldir)
+                logging.debug("Successfully found master spool directory")
+            except OSError:
+                logging.warning("Could not use master spool directory")
+                logging.warning("Attempting to create new spool directory")
+                os.mkdir(spooldir)
+                os.chdir(spooldir)
+                logging.info("Successfully found master spool directory")
+        else:
+            logging.debug("Already in spooldir")
+
+        # attempt to bind the master spooler onto a port
         try:
             logging.info("Initializing master spooler on %s:%s", bindaddr, bindport)
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.s.bind((bindaddr, bindport))
         except Exception as e:
             logging.exception("Could not bind: %s", e)
+
         #clear thread lock
         self.threadOps.get(False)
         self.threadOps.task_done()
@@ -77,7 +83,7 @@ class Spooler():
     def listener(self):
         self.s.listen(5)
         con, addr = self.s.accept()
-        t = threading.Thread(target=IncommingJob, args=(con, addr, self.spooldir, self.toBill))
+        t = threading.Thread(target=IncommingJob, args=(con, addr, self.toBill))
         t.daemon = True
         t.start()
 
@@ -133,6 +139,8 @@ class Billing():
         logging.info("Initializing Billing Manager")
         logging.debug("Attempting to connect to database")
         self.db = database.BillingDB(dbpath)
+        logging.debug("Successfully connected to database")
+
         logging.debug("Successfully connected to database!")
         logging.debug("Attempting to create a parser")
         self.parser = PSParser()
@@ -173,21 +181,26 @@ class CentralControl():
         self.threads.append(threading.Thread(target=Billing, args=(self.threadControl, "coreSpool", "test.sqlite", self.toBill)))
 
         #set up startup locks before running:
-        self.threadControl.put("spooler")
+        self.threadControl.put("spoolerStartup")
 
+
+    def run(self):
         logging.info("GOING POLYTHREADED")
         for thread in self.threads:
             thread.daemon = True
             thread.start()
 
+        # we need to keep this thread running to check thread status
         while(True):
             if not any([thread.isAlive() for thread in self.threads]):
                 break
             else:
                 time.sleep(1)
 
+        logging.info("All threads have exited, now exiting program")
+
 if __name__ == "__main__":
     logging.basicConfig(level = logging.DEBUG)
     logging.info("Starting in debug mode")
     test = CentralControl()
-
+    test.run()
