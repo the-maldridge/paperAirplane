@@ -145,11 +145,11 @@ class Billing():
         
         #init some internal instances of stuff
         self.logger.info("Initializing Billing Manager")
+
         self.logger.debug("Attempting to connect to database")
         self.db = database.BillingDB(dbpath)
-        self.logger.debug("Successfully connected to database")
-
         self.logger.debug("Successfully connected to database!")
+
         self.logger.debug("Attempting to create a parser")
         self.parser = PSParser()
         self.logger.debug("Successfully created parser")
@@ -169,7 +169,7 @@ class Billing():
     def computeCost(self, jid):
         cost = self.parser.pageCount(jid)
         if self.parser.isDuplex(jid):
-            cost = floor(cost / 2)
+            cost = ceiling(cost / 2)
         return cost
 
     def getUser(self, jid):
@@ -238,7 +238,7 @@ class SendToPrinter():
         while(True):
             jid = self.toPrint.get(block=True)
             self.logger.debug("Got print request for job %s", jid)
-            self.printJob(jid)
+            #self.printJob(jid)
             self.logger.debug("Printed job %s", jid)
             self.rmJob(jid)
 
@@ -304,7 +304,7 @@ class CentralControl():
         self.logger.info("All threads have exited, now exiting program")
 
 if __name__ == "__main__":
-    logging.basicConfig(level = logging.DEBUG)
+    logging.basicConfig(level = logging.INFO)
     logging.info("Starting in debug mode")
     test = CentralControl()
     test.run()
