@@ -8,24 +8,7 @@ import base64
 
 class MicroSpooler():
     def __init__(self, originPrinter):
-        spooldir = originPrinter
         self.name = originPrinter
-        try:
-            os.chdir(spooldir)
-        except OSError as e:
-            logging.warning("Could not chdir to spooldir: %s", e)
-            logging.warning("Couldn't open spooler directory, trying to create...")
-            try:
-                os.mkdir(spooldir)
-                logging.info("Successfully created spooler directory %s", spooldir)
-                os.chdir(spooldir)
-            except OSError as e:
-                logging.error("Could not use specified spooling directory: %s", e)
-        logging.info("Spooler successfully initialized")
-
-    def spoolFileName(self):
-        fname = hashlib.sha256(str(time.time())+self.name).hexdigest()
-        return fname[0:10]
 
     def spoolJob(self, jobToSpool, originUser, originPrinter):
         job = {}
@@ -37,8 +20,6 @@ class MicroSpooler():
         job["postscript"] = jobToSpool
         logging.info("Spooling Job %s for %s on %s", jobName, originUser, originPrinter)
         try:
-            jobFile = open(jobName, 'w')
-            json.dump(job, jobFile)
             self.alertSpooler("localhost", job)
             logging.debug("Successfully spooled %s", jobName)
         except Exception as e:
