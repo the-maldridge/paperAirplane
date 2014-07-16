@@ -8,6 +8,7 @@ import database
 import time
 import Queue
 import os
+import sys
 
 class IncommingJob():
     def __init__(self, con, addr, toRelease):
@@ -45,12 +46,13 @@ class IncommingJob():
         return jid
 
 class Spooler():
-    def __init__(self, control, bindaddr, bindport, spooldir, toRelease):
-        self.threadOps = control
-        self.bindaddr = bindaddr
-        self.bindport = bindport
-        self.spooldir = spooldir
+    def __init__(self, threadOps, toRelease, config):
+        self.threadOps = threadOps
         self.toRelease = toRelease
+
+        bindaddr = config["spooler"]["bindAddr"]
+        bindport = config["spooler"]["bindPort"]
+        spooldir = config["global"]["spoolDir"]
 
         self.logger = logging.getLogger("CoreSpooler")
 
@@ -122,10 +124,13 @@ class PSParser():
         return numPages
 
 class Billing():
-    def __init__(self, control, spoolDir, dbpath, toBill, toPrint):
-        self.threadOps = control
+    def __init__(self, threadOps, toBill, toPrint, config):
+        self.threadOps = threadOps
         self.toBill = toBill
         self.toPrint = toPrint
+
+        spoolDir = config["global"]["spoolDir"] 
+        dbpath = config["billing"]["path"]
 
         self.logger = logging.getLogger("Billing")
 
@@ -180,12 +185,15 @@ class Billing():
         return user
 
 class JobRelease():
-    def __init__(self, threadControl, spoolDir, toRelease, toBill):
-        self.threadOps = threadControl
+    def __init__(self, threadOps, toRelease, toBill, config):
+        self.threadOps = threadOps
         self.toRelease = toRelease
         self.toBill = toBill
 
         self.logger = logging.getLogger("JobRelease")
+
+
+        spoolDir = config["global"]["spoolDir"]
 
         #attempt to get to the same dir the spooler is in
         #first hold until the spooler is running
@@ -212,11 +220,14 @@ class JobRelease():
             
 
 class SendToPrinter():
-    def __init__(self, threadControl, spoolDir, toPrint):
+    def __init__(self, threadOps, toPrint, config):
+        self.threadOps = threadOps
         self.toPrint = toPrint
-        self.threadOps = threadControl
+        self.config = config
 
         self.logger = logging.getLogger("PrinterOutput")
+
+        spoolDir = config["global"]["spoolDir"]
 
         #attempt to get to the same dir the spooler is in
         #first hold until the spooler is running
@@ -238,23 +249,30 @@ class SendToPrinter():
         while(True):
             jid = self.toPrint.get(block=True)
             self.logger.debug("Got print request for job %s", jid)
-            #self.printJob(jid)
+            self.printJob(jid)
             self.logger.debug("Printed job %s", jid)
             self.rmJob(jid)
 
     def printJob(self, jid):
-        #replace these with something useful
-        printer = "192.168.42.18"
-        port = 9100
+        destPrinter = self.getDestPrinter(jid)
+        printer = self.config["printers"][destPrinter]["address"]
+        port =  self.config["printers"][destPrinter]["port"]
+        self.logger.debug("Sending %s to %s", jid, destPrinter)
 
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ps = self.getPS(jid)
             s.connect((printer, port))
-            s.sendall(ps)
+            #s.sendall(ps)
             s.close()
         except Exception as e:
             self.logger.critical("Encountered error while printing: %s", e)
+
+    def getDestPrinter(self, jid):
+        f = open(jid)
+        j = json.load(f)
+        f.close()
+        return j["destPrinter"]
 
     def getPS(self, jid):
         f = open(jid)
@@ -272,6 +290,9 @@ class CentralControl():
         self.logger = logging.getLogger("CentralControl")
 
         self.logger.info("Initializing CentralControl")
+        self.logger.debug("Attempting to get config")
+        config = self.getConfig()
+        self.logger.debug("Successfully got config")
 
         self.threadControl = Queue.Queue()
         self.toBill = Queue.Queue()
@@ -279,14 +300,24 @@ class CentralControl():
         self.toPrint = Queue.Queue()
 
         self.threads = []
-        self.threads.append(threading.Thread(target=Spooler, args=(self.threadControl, "localhost", 3201, "coreSpool", self.toRelease)))
-        self.threads.append(threading.Thread(target=Billing, args=(self.threadControl, "coreSpool", "test.sqlite", self.toBill, self.toPrint)))
-        self.threads.append(threading.Thread(target=JobRelease, args=(self.threadControl, "coreSpool", self.toRelease, self.toBill)))
-        self.threads.append(threading.Thread(target=SendToPrinter, args=(self.threadControl, "coreSpool", self.toPrint)))
+        self.threads.append(threading.Thread(target=Spooler, args=(self.threadControl, self.toRelease, config)))
+        self.threads.append(threading.Thread(target=Billing, args=(self.threadControl, self.toBill, self.toPrint, config)))
+        self.threads.append(threading.Thread(target=JobRelease, args=(self.threadControl, self.toRelease, self.toBill, config)))
+        self.threads.append(threading.Thread(target=SendToPrinter, args=(self.threadControl, self.toPrint, config)))
 
         #set up startup locks before running:
         self.threadControl.put("spoolerStartup")
 
+
+    def getConfig(self):
+        try:
+            configFile = open("config.json")
+            conf = json.load(configFile)
+            configFile.close()
+            return conf
+        except Exception as e:
+            self.logger.critical("Malformed config file: %s", e)
+            sys.exit(1)
 
     def run(self):
         self.logger.info("GOING POLYTHREADED")
@@ -304,7 +335,7 @@ class CentralControl():
         self.logger.info("All threads have exited, now exiting program")
 
 if __name__ == "__main__":
-    logging.basicConfig(level = logging.INFO)
+    logging.basicConfig(level = logging.DEBUG)
     logging.info("Starting in debug mode")
     test = CentralControl()
     test.run()
