@@ -14,6 +14,7 @@ class MicroSpooler():
         job = {}
         logging.debug("New job from user %s on %s", originUser, originPrinter)
         job["originPrinter"] = originPrinter
+        job["destPrinter"] = "test1"
         job["originUser"] = originUser
         jobName = self.spoolFileName()
         job["name"] = jobName
@@ -25,6 +26,9 @@ class MicroSpooler():
         except Exception as e:
             logging.error("Encountered error while spooling: %s", e)
 
+    def spoolFileName(self):
+        fname = hashlib.sha256(str(time.time())+self.name).hexdigest()
+        return fname[0:10]
  
     def alertSpooler(self, central, job):
         logging.debug("Alerting the central controller")
