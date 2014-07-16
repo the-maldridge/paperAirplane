@@ -134,6 +134,17 @@ class Billing():
 
         self.logger = logging.getLogger("Billing")
 
+        #init some internal instances of stuff
+        self.logger.info("Initializing Billing Manager")
+
+        self.logger.debug("Attempting to connect to database")
+        self.db = database.BillingDB(dbpath)
+        self.logger.debug("Successfully connected to database!")
+
+        self.logger.debug("Attempting to create a parser")
+        self.parser = PSParser()
+        self.logger.debug("Successfully created parser")
+
         #attempt to get to the same dir the spooler is in
         #first hold until the spooler is running
         self.logger.info("Billing: waiting for spooler to initialize")
@@ -148,17 +159,6 @@ class Billing():
         else:
             self.logger.debug("Somehow already in the spooler's directory")
         
-        #init some internal instances of stuff
-        self.logger.info("Initializing Billing Manager")
-
-        self.logger.debug("Attempting to connect to database")
-        self.db = database.BillingDB(dbpath)
-        self.logger.debug("Successfully connected to database!")
-
-        self.logger.debug("Attempting to create a parser")
-        self.parser = PSParser()
-        self.logger.debug("Successfully created parser")
-
         #enter main loop
         self.run()
 
