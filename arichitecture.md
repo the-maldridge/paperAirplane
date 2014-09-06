@@ -1,5 +1,8 @@
 The paperAirplane software has 3 major components, described as follows.
 
+
+Internal Components
+===================
 The Microspooler
 ----------------
 This is the program that runs the virtual printer(s).  Depending on the environment, there may be one or multiple of these, and they can support
@@ -20,3 +23,6 @@ Central Control
 All print jobs eventually run through central control.  This server process consumes jobs from the microspoolers as well as handling billing and
 daemon update requests.  The central controller knows how to talk to the billing environment and how to talk to the individual physical printers.
 
+All major functionality is modularized, some of the core modules are as follows.
+ * AD Module - Communicates with AD and provides a dictionary object of users
+ * SQL Module - Communicates with the backend database server to provide tracking of print balence
