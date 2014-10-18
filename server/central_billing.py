@@ -2,6 +2,7 @@ import logging
 import database
 import json
 import central_psparser
+import math
 
 class Billing():
     def __init__(self, config, queues):
@@ -39,7 +40,7 @@ class Billing():
     def computeCost(self, jid):
         cost = self.parser.pageCount(jid)
         if self.parser.isDuplex(jid):
-            cost = ceiling(cost / 2)
+            cost = math.ceil(cost / 2)
         return cost
 
     def getUser(self, jid):
