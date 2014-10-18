@@ -46,9 +46,9 @@ class IncommingJob():
         return jid
 
 class Spooler():
-    def __init__(self, threadOps, toRelease, config):
-        self.threadOps = threadOps
-        self.toRelease = toRelease
+    def __init__(self, config, queues):
+        self.threadOps = queues["threadControl"]
+        self.toRelease = queues["toRelease"]
 
         bindaddr = config["spooler"]["bindAddr"]
         bindport = config["spooler"]["bindPort"]
@@ -124,10 +124,10 @@ class PSParser():
         return numPages
 
 class Billing():
-    def __init__(self, threadOps, toBill, toPrint, config):
-        self.threadOps = threadOps
-        self.toBill = toBill
-        self.toPrint = toPrint
+    def __init__(self, config, queues):
+        self.threadOps = queues["threadControl"]
+        self.toBill = queues["toBill"]
+        self.toPrint = queues["toPrint"]
 
         dbpath = config["billing"]["path"]
 
@@ -170,10 +170,10 @@ class Billing():
         return user
 
 class JobRelease():
-    def __init__(self, threadOps, toRelease, toBill, config):
-        self.threadOps = threadOps
-        self.toRelease = toRelease
-        self.toBill = toBill
+    def __init__(self, config, queues):
+        self.threadOps = queues["threadControl"]
+        self.toRelease = queues["toRelease"]
+        self.toBill = queues["toBill"]
 
         self.logger = logging.getLogger("JobRelease")
 
@@ -188,9 +188,9 @@ class JobRelease():
             
 
 class SendToPrinter():
-    def __init__(self, threadOps, toPrint, config):
-        self.threadOps = threadOps
-        self.toPrint = toPrint
+    def __init__(self, config, queues):
+        self.threadOps = queues["threadControl"]
+        self.toPrint = queues["toPrint"]
         self.config = config
 
         self.logger = logging.getLogger("PrinterOutput")
@@ -246,19 +246,21 @@ class CentralControl():
         config = self.getConfig()
         self.logger.debug("Successfully got config")
 
-        self.threadControl = Queue.Queue()
-        self.toBill = Queue.Queue()
-        self.toRelease = Queue.Queue()
-        self.toPrint = Queue.Queue()
+        self.queues = {}
+        self.queues["threadControl"] = Queue.Queue()
+        self.queues["toBill"] = Queue.Queue()
+        self.queues["toRelease"] = Queue.Queue()
+        self.queues["toPrint"] = Queue.Queue()
+
 
         self.threads = []
-        self.threads.append(threading.Thread(target=Spooler, args=(self.threadControl, self.toRelease, config)))
-        self.threads.append(threading.Thread(target=Billing, args=(self.threadControl, self.toBill, self.toPrint, config)))
-        self.threads.append(threading.Thread(target=JobRelease, args=(self.threadControl, self.toRelease, self.toBill, config)))
-        self.threads.append(threading.Thread(target=SendToPrinter, args=(self.threadControl, self.toPrint, config)))
+        self.threads.append(threading.Thread(target=Spooler, args=(config, self.queues)))
+        self.threads.append(threading.Thread(target=Billing, args=(config, self.queues)))
+        self.threads.append(threading.Thread(target=JobRelease, args=(config, self.queues)))
+        self.threads.append(threading.Thread(target=SendToPrinter, args=(config, self.queues)))
 
         #set up startup locks before running:
-        self.threadControl.put("spoolerStartup")
+        self.queues["threadControl"].put("spoolerStartup")
 
 
     def getConfig(self):
