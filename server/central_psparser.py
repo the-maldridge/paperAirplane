@@ -28,7 +28,7 @@ class PSParser():
         self.logger.debug("Computing page count for %s", jid)
 
         rgxresult = re.search('%%Pages: [0-9]*', ps)
-        logging.debug("rgxresult: {0}".format(rgxresult.group(0)))
+        self.logger.debug("rgxresult: {0}".format(rgxresult.group(0)))
 
         if(rgxresult != None) :
             numPages = int(re.search('%%Pages: [0-9]*', ps).group(0).split(" ")[1])
