@@ -4,6 +4,7 @@ import json
 import base64
 import Queue
 import os
+import threading
 
 class IncommingJob():
     def __init__(self, con, addr, toRelease):
