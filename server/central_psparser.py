@@ -31,7 +31,7 @@ class PSParser():
         logging.debug("rgxresult: {0}".format(rgxresult.group(0)))
 
         if(rgxresult != None) :
-            numPages = re.search('%%Pages: [0-9]*', ps).group(0).split(" ")[1]
+            numPages = int(re.search('%%Pages: [0-9]*', ps).group(0).split(" ")[1])
             self.logger.debug("File is adobe compliant, suspect to be {0} pages".format(numPages))
         else:
             self.logger.error("File is not adobe compliant, page count indeterminate.")
