@@ -129,7 +129,6 @@ class Billing():
         self.toBill = toBill
         self.toPrint = toPrint
 
-        spoolDir = config["global"]["spoolDir"] 
         dbpath = config["billing"]["path"]
 
         self.logger = logging.getLogger("Billing")
@@ -145,20 +144,6 @@ class Billing():
         self.parser = PSParser()
         self.logger.debug("Successfully created parser")
 
-        #attempt to get to the same dir the spooler is in
-        #first hold until the spooler is running
-        self.logger.info("Billing: waiting for spooler to initialize")
-        self.threadOps.join()
-        if(spoolDir not in os.getcwd()):
-            try:
-                os.chdir(spoolDir)
-            except OSError as e:
-                self.logger.critical("Billing couldn't get to the spooler dir")
-                self.logger.critical("%s", e)
-                self.threadOps.put("HALT")
-        else:
-            self.logger.debug("Somehow already in the spooler's directory")
-        
         #enter main loop
         self.run()
 
@@ -192,23 +177,6 @@ class JobRelease():
 
         self.logger = logging.getLogger("JobRelease")
 
-
-        spoolDir = config["global"]["spoolDir"]
-
-        #attempt to get to the same dir the spooler is in
-        #first hold until the spooler is running
-        self.logger.info("Waiting on spooler to initialize")
-        self.threadOps.join()
-        if(spoolDir not in os.getcwd()):
-            try:
-                os.chdir(spoolDir)
-            except OSError as e:
-                self.logger.critical("Couldn't get to the spooler dir")
-                self.logger.critical("%s", e)
-                self.threadOps.put("HALT")
-        else:
-            self.logger.debug("Somehow already in the spooler's directory")
-
         self.run()
 
     def run(self):
@@ -226,22 +194,6 @@ class SendToPrinter():
         self.config = config
 
         self.logger = logging.getLogger("PrinterOutput")
-
-        spoolDir = config["global"]["spoolDir"]
-
-        #attempt to get to the same dir the spooler is in
-        #first hold until the spooler is running
-        self.logger.info("Waiting for spooler to initialize")
-        self.threadOps.join()
-        if(spoolDir not in os.getcwd()):
-            try:
-                os.chdir(spoolDir)
-            except OSError as e:
-                self.logger.critical("Couldn't get to the spooler dir")
-                self.logger.critical("%s", e)
-                self.threadOps.put("HALT")
-        else:
-            self.logger.debug("Somehow already in the spooler's directory")
 
         self.run()
 
