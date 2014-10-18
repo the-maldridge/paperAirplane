@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 
 class PSParser():
     def __init__(self):
@@ -23,7 +24,16 @@ class PSParser():
 
     def pageCount(self, jid):
         ps = self.__getPSFromJID(jid)
+        numPages = None
         self.logger.debug("Computing page count for %s", jid)
-        numPages = ps.count("%%Page:")
+
+        rgxresult = re.search('%%Pages: [0-9]*', ps)
+        logging.debug("rgxresult: {0}".format(rgxresult.group(0)))
+
+        if(rgxresult != None) :
+            numPages = re.search('%%Pages: [0-9]*', ps).group(0).split(" ")[1]
+            self.logger.debug("File is adobe compliant, suspect to be {0} pages".format(numPages))
+        else:
+            self.logger.error("File is not adobe compliant, page count indeterminate.")
         return numPages
 
