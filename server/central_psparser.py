@@ -28,9 +28,9 @@ class PSParser():
         self.logger.debug("Computing page count for %s", jid)
 
         rgxresult = re.search('%%Pages: [0-9]*', ps)
-        self.logger.debug("rgxresult: {0}".format(rgxresult.group(0)))
 
         if(rgxresult != None) :
+            self.logger.debug("rgxresult: {0}".format(rgxresult.group(0)))
             numPages = int(re.search('%%Pages: [0-9]*', ps).group(0).split(" ")[1])
             self.logger.debug("File is adobe compliant, suspect to be {0} pages".format(numPages))
         else:
