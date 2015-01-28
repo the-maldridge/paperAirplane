@@ -16,5 +16,4 @@ class JobRelease():
             jid = self.toRelease.get(block=True)
             self.logger.debug("Forwarding job %s for billing", jid)
             self.toBill.put(jid)
-            
-
+    

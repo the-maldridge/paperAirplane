@@ -29,6 +29,7 @@ class Billing():
         self.run()
 
     def run(self):
+        self.logger.debug("Entered main billing loop")
         while(True):
             jid = self.toBill.get(block=True)
             cost = self.computeCost(jid)
@@ -41,7 +42,7 @@ class Billing():
         cost = self.parser.pageCount(jid)
         if self.parser.isDuplex(jid):
             cost = math.ceil(cost / 2)
-        return cost
+        return 1 if cost==0 else cost
 
     def getUser(self, jid):
         f = open(jid, 'r')
