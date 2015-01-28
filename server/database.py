@@ -16,8 +16,13 @@ class BillingDB():
         self.c.execute("UPDATE users SET BALANCE = ? WHERE username = ?", (current, username))
         self.conn.commit()
 
+    def getUsers(self): 
+        self.c.execute("SELECT * FROM users")
+        return self.c.fetchall()
+
 if __name__ == "__main__":
-    dat = Database("test.sqlite")
+    dat = BillingDB("test.sqlite")
     print dat.getUserBalance("maldridge")
     dat.billUser("maldridge", 5)
     print dat.getUserBalance("maldridge")
+    print dat.getUsers()

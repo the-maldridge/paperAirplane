@@ -23,14 +23,16 @@ class PSOutput():
 
     def printJob(self, jid):
         destPrinter = self.getDestPrinter(jid)
+        realPrinter = self.config["printers"][destPrinter]["name"]
         printer = self.config["printers"][destPrinter]["address"]
         port =  self.config["printers"][destPrinter]["port"]
-        self.logger.debug("Sending %s to %s", jid, destPrinter)
+        self.logger.debug("Sending %s recieved on %s to %s", jid, destPrinter, realPrinter)
 
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             ps = self.getPS(jid)
             s.connect((printer, port))
+            self.logger.debug("Transmitting PostScript...")
             #s.sendall(ps)
             s.close()
         except Exception as e:
