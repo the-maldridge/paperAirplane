@@ -17,9 +17,12 @@ class PSOutput():
         while(True):
             jid = self.toPrint.get(block=True)
             self.logger.debug("Got print request for job %s", jid)
-            self.printJob(jid)
-            self.logger.debug("Printed job %s", jid)
-            self.rmJob(jid)
+            try:
+                self.printJob(jid)
+                self.logger.debug("Printed job %s", jid)
+                self.rmJob(jid)
+            except:
+                moveToGraveYard(jid)
 
     def printJob(self, jid):
         destPrinter = self.getDestPrinter(jid)
@@ -37,6 +40,7 @@ class PSOutput():
             s.close()
         except Exception as e:
             self.logger.critical("Encountered error while printing: %s", e)
+            raise e
 
     def getDestPrinter(self, jid):
         f = open(jid)
@@ -54,3 +58,6 @@ class PSOutput():
         self.logger.debug("Removing spool file for %s", jid)
         os.remove(jid)
         self.logger.info("Completed handling of %s", jid)
+
+    def moveToGraveYard(self, jid):
+        self.logger.warning("Moving unprintable job %s to graveyard.", jid)
