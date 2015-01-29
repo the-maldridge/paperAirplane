@@ -33,6 +33,7 @@ class Billing():
             cost = self.computeCost(jid)
             user = self.getUser(jid)
             self.logger.info("Billing user %s %s credit(s) for job %s", user, cost, jid)
+            self.db.billUser(user, cost)
             self.logger.debug("Forwarding %s to print manager", jid)
             self.toPrint.put(jid)
 

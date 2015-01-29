@@ -37,9 +37,9 @@ class BillingDB():
         return int(balance[0][0])
 
     def billUser(self, username, cost):
-        cmd = "UPDATE users SET BALANCE = %s WHERE username = %s"
         current = self.getUserBalance(username)
         current = current - cost
+        cmd = "UPDATE users SET BALANCE = %s WHERE username = %s"
         self.logger.debug("About to execute: " + cmd)
         self.c.execute(cmd, (current, username))
         self.conn.commit()
