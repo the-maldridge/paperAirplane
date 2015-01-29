@@ -6,9 +6,14 @@
 		"bindAddr":"localhost",
 		"bindPort":3201
 		},
-	"billing":{
-		"mode":"sqlite",
-		"path":"test.sqlite"
+	"database":{
+		"mode":"mysql",
+		"mysql":{
+			"user":"silenceDoGood",
+			"host":"localhost",
+			"passwd":"franklin",
+			"db":"paperAirplane"
+			}
 		},
 	"printers":{
 		"test1":{

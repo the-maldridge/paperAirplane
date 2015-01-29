@@ -10,15 +10,13 @@ class Billing():
         self.toBill = queues["toBill"]
         self.toPrint = queues["toPrint"]
 
-        dbpath = config["billing"]["path"]
-
         self.logger = logging.getLogger("Billing")
 
         #init some internal instances of stuff
         self.logger.info("Initializing Billing Manager")
 
         self.logger.debug("Attempting to connect to database")
-        self.db = database.BillingDB(dbpath)
+        self.db = database.BillingDB(config["database"])
         self.logger.debug("Successfully connected to database!")
 
         self.logger.debug("Attempting to create a parser")
